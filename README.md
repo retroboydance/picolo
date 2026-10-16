@@ -1,0 +1,2 @@
+# picolo
+GUI Agent
