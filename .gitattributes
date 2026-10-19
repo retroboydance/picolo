@@ -1,0 +1,23 @@
+# Auto-detect text files and normalize line endings to LF across Windows & Linux
+* text=auto eol=lf
+
+# Explicitly enforce LF for source, config, and Linux shell scripts
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.lisp text eol=lf
+*.smt2 text eol=lf
+*.sh text eol=lf
+.env* text eol=lf
+
+# Enforce CRLF for Windows scripts
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.npz binary
+*.npy binary
+*.pkl binary
+*.safetensors binary

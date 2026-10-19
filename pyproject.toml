@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llre"
+version = "0.1.0"
+description = "Latent-Space Logic Reasoning Engine (LLRE): A Token-Free, Grounded Paradigm for Native Silicon & Logic Intelligence"
+readme = "latent_logic_reasoning_architecture.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jax>=0.4.20",
+    "jaxlib>=0.4.20",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "jax[cuda12]>=0.4.20; sys_platform == 'linux'",
+]
+smt = [
+    "z3-solver>=4.12.0",
+]
+dev = [
+    "pytest>=7.4.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["llre*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
