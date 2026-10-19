@@ -73,6 +73,7 @@ class LogicChallenge:
     complexity_class: str = "O(1) Bitwise/ALU"
     uses_arithmetic: bool = False
     seed_circuit: Optional[List[List[int]]] = None
+    level: int = 1
 
     @property
     def spec_expr(self) -> SExpr:
@@ -98,7 +99,7 @@ class VerifiedPrimitive:
 
 
 def build_core_curriculum() -> List[LogicChallenge]:
-    """Build the core curriculum of atomic and compound bitwise/arithmetic tasks."""
+    """Build Level 1 core curriculum of atomic and 2-gate bitwise/arithmetic tasks."""
     sel_s1, sel_s2 = encode_select_operands(2, 0, 1)  # cond=R2(z), true=R0(x), false=R1(y)
     return [
         LogicChallenge(
@@ -107,12 +108,13 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64)],
             outputs=[PortDecl("result", 1)],
             spec_sexpr_str="(assert (= result (= (mod x 2) 0)))",
-            complexity_class="O(1) Bitwise Parity",
+            complexity_class="Level 1: Bitwise Parity",
             uses_arithmetic=False,
             seed_circuit=[
                 make_instruction(Opcode.AND, 4, 0, REG_ONE),
                 make_instruction(Opcode.XOR, OUT_REG, 4, REG_ONE),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="odd_lsb_detector",
@@ -120,11 +122,12 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64)],
             outputs=[PortDecl("result", 1)],
             spec_sexpr_str="(assert (= result (bit-and x 1)))",
-            complexity_class="O(1) Bitwise Mask",
+            complexity_class="Level 1: Bitwise Mask",
             uses_arithmetic=False,
             seed_circuit=[
                 make_instruction(Opcode.AND, OUT_REG, 0, REG_ONE),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="bitwise_xor_diff",
@@ -132,11 +135,12 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64), PortDecl("y", 64)],
             outputs=[PortDecl("result", 64)],
             spec_sexpr_str="(assert (= result (bit-xor x y)))",
-            complexity_class="O(1) Bitwise Logic",
+            complexity_class="Level 1: Bitwise Logic",
             uses_arithmetic=False,
             seed_circuit=[
                 make_instruction(Opcode.XOR, OUT_REG, 0, 1),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="de_morgan_nand",
@@ -144,11 +148,12 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64), PortDecl("y", 64)],
             outputs=[PortDecl("result", 64)],
             spec_sexpr_str="(assert (= result (bit-nand x y)))",
-            complexity_class="O(1) Universal Gate",
+            complexity_class="Level 1: Universal Gate",
             uses_arithmetic=False,
             seed_circuit=[
                 make_instruction(Opcode.NAND, OUT_REG, 0, 1),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="clear_lowest_set_bit",
@@ -156,12 +161,13 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64)],
             outputs=[PortDecl("result", 64)],
             spec_sexpr_str="(assert (= result (bit-and x (sub x 1))))",
-            complexity_class="O(1) Bit Manipulation",
+            complexity_class="Level 1: Bit Manipulation",
             uses_arithmetic=True,
             seed_circuit=[
                 make_instruction(Opcode.SUB, 4, 0, REG_ONE),
                 make_instruction(Opcode.AND, OUT_REG, 0, 4),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="isolate_lowest_set_bit",
@@ -169,12 +175,13 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64)],
             outputs=[PortDecl("result", 64)],
             spec_sexpr_str="(assert (= result (bit-and x (neg x))))",
-            complexity_class="O(1) Bit Manipulation",
+            complexity_class="Level 1: Bit Manipulation",
             uses_arithmetic=True,
             seed_circuit=[
                 make_instruction(Opcode.NEG, 4, 0, 0),
                 make_instruction(Opcode.AND, OUT_REG, 0, 4),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="branchless_mux",
@@ -182,11 +189,12 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64), PortDecl("y", 64), PortDecl("z", 64)],
             outputs=[PortDecl("result", 64)],
             spec_sexpr_str="(assert (= result (select z x y)))",
-            complexity_class="O(1) Branchless Mux",
+            complexity_class="Level 1: Branchless Mux",
             uses_arithmetic=False,
             seed_circuit=[
                 make_instruction(Opcode.SELECT, OUT_REG, sel_s1, sel_s2),
             ],
+            level=1,
         ),
         LogicChallenge(
             name="modular_add_inc",
@@ -194,14 +202,155 @@ def build_core_curriculum() -> List[LogicChallenge]:
             inputs=[PortDecl("x", 64), PortDecl("y", 64)],
             outputs=[PortDecl("result", 64)],
             spec_sexpr_str="(assert (= result (add (add x y) 1)))",
-            complexity_class="O(1) 64-Bit Arithmetic",
+            complexity_class="Level 1: 64-Bit Arithmetic",
             uses_arithmetic=True,
             seed_circuit=[
                 make_instruction(Opcode.ADD, 4, 0, 1),
                 make_instruction(Opcode.ADD, OUT_REG, 4, REG_ONE),
             ],
+            level=1,
         ),
     ]
+
+
+def build_expanded_curriculum(max_level: int = 3) -> List[LogicChallenge]:
+    """
+    Build the multi-tier Dynamic Curriculum (Levels 1, 2, and 3) unlocked progressively
+    during autonomous self-play as lower levels reach 100% formal UNSAT mastery.
+    """
+    tasks = build_core_curriculum()
+    if max_level < 2:
+        return tasks
+
+    min_s1, min_s2 = encode_select_operands(4, 0, 1)  # cond=t0(R4), true=x(R0), false=y(R1)
+    level_2 = [
+        LogicChallenge(
+            name="set_lowest_zero_bit",
+            description="Set the lowest 0-bit of x using x | (x + 1)",
+            inputs=[PortDecl("x", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (bit-or x (add x 1))))",
+            complexity_class="Level 2: Compound Bit Manipulation",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.ADD, 4, 0, REG_ONE),
+                make_instruction(Opcode.OR, OUT_REG, 0, 4),
+            ],
+            level=2,
+        ),
+        LogicChallenge(
+            name="mask_trailing_zeros",
+            description="Create a bitmask of all trailing zeros of x using (~x) & (x - 1)",
+            inputs=[PortDecl("x", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (bit-and (bit-not x) (sub x 1))))",
+            complexity_class="Level 2: 3-Gate Bitwise/ALU",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.NOT, 4, 0, 0),
+                make_instruction(Opcode.SUB, 5, 0, REG_ONE),
+                make_instruction(Opcode.AND, OUT_REG, 4, 5),
+            ],
+            level=2,
+        ),
+        LogicChallenge(
+            name="branchless_min_u64",
+            description="Branchless 64-bit unsigned minimum min(x, y) via CMP_ULT and SELECT",
+            inputs=[PortDecl("x", 64), PortDecl("y", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (select (cmp-ult x y) x y)))",
+            complexity_class="Level 2: Branchless Comparator",
+            uses_arithmetic=False,
+            seed_circuit=[
+                make_instruction(Opcode.CMP_ULT, 4, 0, 1),
+                make_instruction(Opcode.SELECT, OUT_REG, min_s1, min_s2),
+            ],
+            level=2,
+        ),
+        LogicChallenge(
+            name="linear_congruential_step",
+            description="Compute affine modular step (2*x + y + 1) = (x << 1) + y + 1",
+            inputs=[PortDecl("x", 64), PortDecl("y", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (add (add (bit-shl x 1) y) 1)))",
+            complexity_class="Level 2: 3-Gate ALU Pipeline",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.SHL, 4, 0, REG_ONE),
+                make_instruction(Opcode.ADD, 5, 4, 1),
+                make_instruction(Opcode.ADD, OUT_REG, 5, REG_ONE),
+            ],
+            level=2,
+        ),
+    ]
+    tasks.extend(level_2)
+
+    if max_level < 3:
+        return tasks
+
+    level_3 = [
+        LogicChallenge(
+            name="branchless_abs_diff_xor",
+            description="Conditional sign-mask transform (x ^ y) - y",
+            inputs=[PortDecl("x", 64), PortDecl("y", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (sub (bit-xor x y) y)))",
+            complexity_class="Level 3: Branchless Arithmetic",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.XOR, 4, 0, 1),
+                make_instruction(Opcode.SUB, OUT_REG, 4, 1),
+            ],
+            level=3,
+        ),
+        LogicChallenge(
+            name="isolate_lowest_zero_bit",
+            description="Isolate the lowest 0-bit of x as a 1-bit mask using (~x) & (x + 1)",
+            inputs=[PortDecl("x", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (bit-and (bit-not x) (add x 1))))",
+            complexity_class="Level 3: 3-Gate Bit Isolation",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.NOT, 4, 0, 0),
+                make_instruction(Opcode.ADD, 5, 0, REG_ONE),
+                make_instruction(Opcode.AND, OUT_REG, 4, 5),
+            ],
+            level=3,
+        ),
+        LogicChallenge(
+            name="swap_lsb_to_bit1",
+            description="Extract LSB of x and shift to bit position 1 via (x & 1) << 1",
+            inputs=[PortDecl("x", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (bit-shl (bit-and x 1) 1)))",
+            complexity_class="Level 3: Bitfield Extraction",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.AND, 4, 0, REG_ONE),
+                make_instruction(Opcode.SHL, OUT_REG, 4, REG_ONE),
+            ],
+            level=3,
+        ),
+        LogicChallenge(
+            name="clear_two_lowest_set_bits",
+            description="Clear the two lowest set 1-bits of x by composing Kernighan's trick twice",
+            inputs=[PortDecl("x", 64)],
+            outputs=[PortDecl("result", 64)],
+            spec_sexpr_str="(assert (= result (bit-and (bit-and x (sub x 1)) (sub (bit-and x (sub x 1)) 1))))",
+            complexity_class="Level 3: 4-Gate Compound Composition",
+            uses_arithmetic=True,
+            seed_circuit=[
+                make_instruction(Opcode.SUB, 4, 0, REG_ONE),
+                make_instruction(Opcode.AND, 5, 0, 4),
+                make_instruction(Opcode.SUB, 6, 5, REG_ONE),
+                make_instruction(Opcode.AND, OUT_REG, 5, 6),
+            ],
+            level=3,
+        ),
+    ]
+    tasks.extend(level_3)
+    return tasks
 
 
 class PrimitiveLibrary:

@@ -1,9 +1,9 @@
 """
 Cross-OS Checkpoint & Training Metrics Manager (`llre/checkpoint.py`).
 
-Saves and restores pure-JAX PyTree model parameters (`params`) using portable compressed
-NumPy `.npz` archives (100% interoperable between Windows CPU and Linux CUDA GPU),
-alongside JSON metadata and `.jsonl` validation curves.
+Saves and restores pure-JAX PyTree model parameters (`params`) and AdamW optimizer
+state (`opt_state`) using portable compressed NumPy `.npz` archives (100% interoperable
+between Windows CPU and Linux CUDA GPU), alongside JSON metadata and `.jsonl` validation curves.
 """
 
 from __future__ import annotations
@@ -25,10 +25,11 @@ def save_checkpoint(
     params: PyTree,
     checkpoint_path: Path | str,
     metadata: Optional[Dict[str, Any]] = None,
+    opt_state: Optional[Dict[str, Any]] = None,
 ) -> Path:
     """
-    Save JAX PyTree parameters (`Dict[str, Dict[str, jnp.ndarray]]`) to a portable `.npz`
-    file and write companion metadata JSON.
+    Save JAX PyTree parameters (`params`) and optional AdamW `opt_state` to a portable
+    `.npz` file and write companion metadata JSON.
     """
     path = Path(checkpoint_path)
     if path.suffix != ".npz":
@@ -38,8 +39,17 @@ def save_checkpoint(
     flat_arrays: Dict[str, np.ndarray] = {}
     for module_name, layer_dict in params.items():
         for param_name, tensor in layer_dict.items():
-            key = f"{module_name}__{param_name}"
+            key = f"param__{module_name}__{param_name}"
             flat_arrays[key] = np.asarray(tensor, dtype=np.float32)
+
+    if opt_state is not None and "step" in opt_state:
+        flat_arrays["opt__step"] = np.asarray(opt_state["step"], dtype=np.int32)
+        for slot in ("m", "v"):
+            if slot in opt_state:
+                for module_name, layer_dict in opt_state[slot].items():
+                    for param_name, tensor in layer_dict.items():
+                        key = f"opt__{slot}__{module_name}__{param_name}"
+                        flat_arrays[key] = np.asarray(tensor, dtype=np.float32)
 
     np.savez_compressed(path, **flat_arrays)
 
@@ -55,9 +65,10 @@ def save_checkpoint(
 
 def load_checkpoint(
     checkpoint_path: Path | str,
-) -> Tuple[PyTree, Dict[str, Any]]:
+    return_opt_state: bool = False,
+) -> Tuple[PyTree, Dict[str, Any]] | Tuple[PyTree, Dict[str, Any], Optional[Dict[str, Any]]]:
     """
-    Load JAX PyTree parameters from a `.npz` archive and return `(params, metadata)`.
+    Load JAX PyTree parameters (and optionally AdamW `opt_state`) from a `.npz` archive.
     """
     path = Path(checkpoint_path)
     if path.suffix != ".npz":
@@ -66,12 +77,27 @@ def load_checkpoint(
         raise FileNotFoundError(f"Checkpoint not found: {path}")
 
     params: PyTree = {}
+    opt_m: PyTree = {}
+    opt_v: PyTree = {}
+    opt_step: Optional[jnp.ndarray] = None
+
     with np.load(path, allow_pickle=False) as data:
         for key in data.files:
-            if "__" not in key:
-                continue
-            module_name, param_name = key.split("__", 1)
-            params.setdefault(module_name, {})[param_name] = jnp.asarray(data[key], dtype=jnp.float32)
+            if key.startswith("param__"):
+                _, module_name, param_name = key.split("__", 2)
+                params.setdefault(module_name, {})[param_name] = jnp.asarray(data[key], dtype=jnp.float32)
+            elif key == "opt__step":
+                opt_step = jnp.asarray(data[key], dtype=jnp.int32)
+            elif key.startswith("opt__m__"):
+                _, _, module_name, param_name = key.split("__", 3)
+                opt_m.setdefault(module_name, {})[param_name] = jnp.asarray(data[key], dtype=jnp.float32)
+            elif key.startswith("opt__v__"):
+                _, _, module_name, param_name = key.split("__", 3)
+                opt_v.setdefault(module_name, {})[param_name] = jnp.asarray(data[key], dtype=jnp.float32)
+            elif "__" in key:
+                # Backward compatibility with earlier flat key format
+                module_name, param_name = key.split("__", 1)
+                params.setdefault(module_name, {})[param_name] = jnp.asarray(data[key], dtype=np.float32)
 
     meta_path = path.with_suffix(".json")
     metadata: Dict[str, Any] = {}
@@ -81,7 +107,13 @@ def load_checkpoint(
         except Exception:
             metadata = {}
 
-    return params, metadata
+    if not return_opt_state:
+        return params, metadata
+
+    opt_state: Optional[Dict[str, Any]] = None
+    if opt_step is not None and opt_m and opt_v:
+        opt_state = {"step": opt_step, "m": opt_m, "v": opt_v}
+    return params, metadata, opt_state
 
 
 def append_metrics_log(

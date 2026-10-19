@@ -29,7 +29,7 @@ from llre.self_play import (
     LogicChallenge,
     SelfPlayEngine,
     VerifiedPrimitive,
-    build_core_curriculum,
+    build_expanded_curriculum,
 )
 import numpy as np
 
@@ -44,7 +44,7 @@ class PeripheralIOAdapter:
         self.engine = engine or SelfPlayEngine()
         self.compiler = LispCompiler(max_steps=self.engine.max_steps)
         self.curriculum_map: Dict[str, LogicChallenge] = {
-            ch.name: ch for ch in build_core_curriculum()
+            ch.name: ch for ch in build_expanded_curriculum(max_level=3)
         }
 
     def parse_query_to_challenge(self, query: str) -> LogicChallenge:
@@ -71,8 +71,16 @@ class PeripheralIOAdapter:
             )
 
         q_lower = stripped.lower()
-        # Semantic pattern routing to formal SMT specifications
+        # Semantic pattern routing to formal SMT specifications (Levels 1..3)
         patterns: List[Tuple[List[str], str]] = [
+            (["two lowest", "clear two", "double kernighan"], "clear_two_lowest_set_bits"),
+            (["trailing zero", "mask trailing", "(~x) & (x - 1)"], "mask_trailing_zeros"),
+            (["isolate lowest zero", "lowest 0-bit", "(~x) & (x + 1)"], "isolate_lowest_zero_bit"),
+            (["set lowest zero", "x | (x + 1)"], "set_lowest_zero_bit"),
+            (["min(", "minimum", "cmp_ult", "unsigned min"], "branchless_min_u64"),
+            (["2*x + y + 1", "congruential", "(x << 1) + y + 1"], "linear_congruential_step"),
+            (["(x ^ y) - y", "abs_diff", "sign-mask"], "branchless_abs_diff_xor"),
+            (["swap lsb", "(x & 1) << 1", "shift to bit position 1"], "swap_lsb_to_bit1"),
             (["even", "parity", "divisible by 2", "mod 2 == 0"], "parity_checker"),
             (["odd", "least significant bit", "lsb == 1"], "odd_lsb_detector"),
             (["clear lowest", "drop lowest", "x & (x - 1)", "kernighan"], "clear_lowest_set_bit"),
@@ -133,12 +141,18 @@ class PeripheralIOAdapter:
                 desc = f"Invert all bits (bitwise NOT) of {a1}, storing into {lhs}."
             elif op == Opcode.NAND:
                 desc = f"Compute bitwise NAND ~( {a1} & {a2} ), storing into {lhs}."
+            elif op == Opcode.SHL:
+                desc = f"Shift {a1} left logically by {a2} bit(s), storing into {lhs}."
+            elif op == Opcode.SHR:
+                desc = f"Shift {a1} right logically by {a2} bit(s), storing into {lhs}."
             elif op == Opcode.ADD:
                 desc = f"Compute 64-bit modular addition of {a1} and {a2}, storing into {lhs}."
             elif op == Opcode.SUB:
                 desc = f"Compute 64-bit modular subtraction of {a2} from {a1}, storing into {lhs}."
             elif op == Opcode.NEG:
                 desc = f"Compute two's complement negation (-{a1}), storing into {lhs}."
+            elif op == Opcode.CMP_ULT:
+                desc = f"Compare unsigned ({a1} < {a2}) to produce 64-bit mask (~0 if true else 0) in {lhs}."
             elif op == Opcode.SELECT:
                 desc = f"Branchlessly multiplex {a1} (where mask {ac} is 1) and {a2} (where mask {ac} is 0) into {lhs}."
             else:

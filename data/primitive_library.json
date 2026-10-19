@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "count": 8,
+  "count": 16,
   "primitives": {
     "parity_checker": {
       "name": "parity_checker",
@@ -72,61 +72,61 @@
       "backend": "symbolic-bv64",
       "active_gates": 1,
       "reward": 0.9900000095367432,
-      "initial_energy": 0.8951305747032166,
-      "final_energy": 0.8124082684516907,
+      "initial_energy": 28.241121292114258,
+      "final_energy": 11.773216247558594,
       "lisp_module": "(module odd_lsb_detector\n  (inputs (x :bits 64))\n  (outputs (result :bits 1))\n  (circuit\n    (let ((result (bit-and x 1)))\n      result))\n  (specification\n    (assert (= result (bit-and x 1)))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r11 () (_ BitVec 64) (bvand x (_ bv1 64)))\n(define-fun circuit_out () (_ BitVec 64) step_0_r11)\n(define-fun spec_out () (_ BitVec 64) (bvand (bvand x (_ bv1 64)) (_ bv1 64)))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
         [
-          1,
-          11,
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
           0,
           13
         ],
         [
           0,
+          6,
+          5,
+          13
+        ],
+        [
           0,
+          5,
+          12,
+          4
+        ],
+        [
           0,
+          4,
+          13,
           0
         ],
         [
           0,
-          0,
-          0,
-          0
+          9,
+          15,
+          5
         ],
         [
           0,
-          0,
-          0,
-          0
+          4,
+          14,
+          7
         ],
         [
+          1,
+          11,
           0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
+          13
         ]
       ],
-      "complexity_class": "O(1) Bitwise Mask"
+      "complexity_class": "Level 1: Bitwise Mask"
     },
     "bitwise_xor_diff": {
       "name": "bitwise_xor_diff",
@@ -135,61 +135,61 @@
       "backend": "symbolic-bv64",
       "active_gates": 1,
       "reward": 0.9900000095367432,
-      "initial_energy": 1.0184566974639893,
-      "final_energy": 0.9197068214416504,
+      "initial_energy": 28.24985122680664,
+      "final_energy": 13.128253936767578,
       "lisp_module": "(module bitwise_xor_diff\n  (inputs (x :bits 64) (y :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((result (bit-xor x y)))\n      result))\n  (specification\n    (assert (= result (bit-xor x y)))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r11 () (_ BitVec 64) (bvxor x y))\n(define-fun circuit_out () (_ BitVec 64) step_0_r11)\n(define-fun spec_out () (_ BitVec 64) (bvxor x y))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          4,
+          15,
+          0
+        ],
+        [
+          0,
+          6,
+          15,
+          15
+        ],
+        [
+          0,
+          7,
+          1,
+          15
+        ],
+        [
+          0,
+          5,
+          15,
+          1
+        ],
+        [
+          0,
+          8,
+          7,
+          14
+        ],
         [
           3,
           11,
           0,
           1
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
         ]
       ],
-      "complexity_class": "O(1) Bitwise Logic"
+      "complexity_class": "Level 1: Bitwise Logic"
     },
     "de_morgan_nand": {
       "name": "de_morgan_nand",
@@ -198,61 +198,61 @@
       "backend": "symbolic-bv64",
       "active_gates": 1,
       "reward": 0.9900000095367432,
-      "initial_energy": 0.9365991353988647,
-      "final_energy": 0.8534967303276062,
+      "initial_energy": 30.75825309753418,
+      "final_energy": 12.739825248718262,
       "lisp_module": "(module de_morgan_nand\n  (inputs (x :bits 64) (y :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((result (bit-nand x y)))\n      result))\n  (specification\n    (assert (= result (bit-nand x y)))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r11 () (_ BitVec 64) (bvnand x y))\n(define-fun circuit_out () (_ BitVec 64) step_0_r11)\n(define-fun spec_out () (_ BitVec 64) (bvnand x y))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
+        [
+          0,
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          4,
+          4,
+          0
+        ],
+        [
+          0,
+          4,
+          1,
+          6
+        ],
+        [
+          0,
+          6,
+          4,
+          15
+        ],
+        [
+          0,
+          5,
+          14,
+          5
+        ],
+        [
+          0,
+          8,
+          7,
+          7
+        ],
         [
           7,
           11,
           0,
           1
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
         ]
       ],
-      "complexity_class": "O(1) Universal Gate"
+      "complexity_class": "Level 1: Universal Gate"
     },
     "clear_lowest_set_bit": {
       "name": "clear_lowest_set_bit",
@@ -261,8 +261,8 @@
       "backend": "symbolic-bv64",
       "active_gates": 2,
       "reward": 0.9800000190734863,
-      "initial_energy": 0.9383648633956909,
-      "final_energy": 0.8629321455955505,
+      "initial_energy": 15.965190887451172,
+      "final_energy": 6.880189895629883,
       "lisp_module": "(module clear_lowest_set_bit\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (sub x 1)))\n      (let ((result (bit-and x t0)))\n        result)))\n  (specification\n    (assert (= result (bit-and x (sub x 1))))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvsub x (_ bv1 64)))\n(define-fun step_1_r11 () (_ BitVec 64) (bvand x step_0_r4))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvand x (bvsub x (_ bv1 64))))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
@@ -273,49 +273,49 @@
           13
         ],
         [
-          1,
-          11,
           0,
+          5,
+          4,
           4
         ],
         [
           0,
-          0,
-          0,
-          0
+          6,
+          5,
+          13
         ],
         [
           0,
-          0,
-          0,
-          0
+          11,
+          6,
+          6
         ],
         [
           0,
-          0,
-          0,
-          0
+          7,
+          7,
+          4
         ],
         [
           0,
-          0,
-          0,
-          0
+          4,
+          14,
+          8
         ],
         [
           0,
+          8,
           0,
-          0,
-          0
+          4
         ],
         [
+          1,
+          11,
           0,
-          0,
-          0,
-          0
+          4
         ]
       ],
-      "complexity_class": "O(1) Bit Manipulation"
+      "complexity_class": "Level 1: Bit Manipulation"
     },
     "isolate_lowest_set_bit": {
       "name": "isolate_lowest_set_bit",
@@ -324,8 +324,8 @@
       "backend": "symbolic-bv64",
       "active_gates": 2,
       "reward": 0.9800000190734863,
-      "initial_energy": 0.9602776169776917,
-      "final_energy": 0.8962053656578064,
+      "initial_energy": 29.9410343170166,
+      "final_energy": 12.871642112731934,
       "lisp_module": "(module isolate_lowest_set_bit\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (neg x)))\n      (let ((result (bit-and x t0)))\n        result)))\n  (specification\n    (assert (= result (bit-and x (neg x))))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvneg x))\n(define-fun step_1_r11 () (_ BitVec 64) (bvand x step_0_r4))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvand x (bvneg x)))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
@@ -336,49 +336,49 @@
           0
         ],
         [
+          0,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          6,
+          5,
+          13
+        ],
+        [
+          0,
+          5,
+          15,
+          15
+        ],
+        [
+          0,
+          4,
+          13,
+          12
+        ],
+        [
+          0,
+          5,
+          15,
+          12
+        ],
+        [
+          0,
+          8,
+          14,
+          9
+        ],
+        [
           1,
           11,
           0,
           4
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
-        ],
-        [
-          0,
-          0,
-          0,
-          0
         ]
       ],
-      "complexity_class": "O(1) Bit Manipulation"
+      "complexity_class": "Level 1: Bit Manipulation"
     },
     "modular_add_inc": {
       "name": "modular_add_inc",
@@ -387,8 +387,8 @@
       "backend": "symbolic-bv64",
       "active_gates": 2,
       "reward": 0.9800000190734863,
-      "initial_energy": 1.0441876649856567,
-      "final_energy": 0.9453089237213135,
+      "initial_energy": 23.742130279541016,
+      "final_energy": 10.33907699584961,
       "lisp_module": "(module modular_add_inc\n  (inputs (x :bits 64) (y :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (add x y)))\n      (let ((result (add t0 1)))\n        result)))\n  (specification\n    (assert (= result (add (add x y) 1)))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvadd x y))\n(define-fun step_1_r11 () (_ BitVec 64) (bvadd step_0_r4 (_ bv1 64)))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvadd (bvadd x y) (_ bv1 64)))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
@@ -399,49 +399,49 @@
           1
         ],
         [
-          16,
-          11,
-          4,
+          0,
+          5,
+          0,
           13
         ],
         [
           0,
-          0,
-          0,
-          0
+          6,
+          5,
+          13
         ],
         [
           0,
-          0,
-          0,
-          0
+          11,
+          12,
+          4
         ],
         [
           0,
-          0,
-          0,
-          0
+          8,
+          6,
+          1
         ],
         [
           0,
-          0,
-          0,
-          0
+          8,
+          5,
+          14
         ],
         [
           0,
-          0,
-          0,
-          0
+          6,
+          4,
+          6
         ],
         [
-          0,
-          0,
-          0,
-          0
+          16,
+          11,
+          4,
+          13
         ]
       ],
-      "complexity_class": "O(1) 64-Bit Arithmetic"
+      "complexity_class": "Level 1: 64-Bit Arithmetic"
     },
     "branchless_mux": {
       "name": "branchless_mux",
@@ -450,34 +450,538 @@
       "backend": "symbolic-bv64",
       "active_gates": 1,
       "reward": 0.9900000095367432,
-      "initial_energy": 0.8832365870475769,
-      "final_energy": 0.815914511680603,
+      "initial_energy": 21.018789291381836,
+      "final_energy": 7.4726433753967285,
       "lisp_module": "(module branchless_mux\n  (inputs (x :bits 64) (y :bits 64) (z :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((result (select z x y)))\n      result))\n  (specification\n    (assert (= result (select z x y)))))",
       "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n(declare-const z (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r11 () (_ BitVec 64) (bvor (bvand z x) (bvand (bvnot z) y)))\n(define-fun circuit_out () (_ BitVec 64) step_0_r11)\n(define-fun spec_out () (_ BitVec 64) (bvor (bvand z x) (bvand (bvnot z) y)))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
       "bytecode": [
+        [
+          0,
+          4,
+          0,
+          1
+        ],
+        [
+          0,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          5,
+          15,
+          4
+        ],
+        [
+          0,
+          5,
+          4,
+          1
+        ],
+        [
+          0,
+          7,
+          4,
+          6
+        ],
+        [
+          0,
+          4,
+          12,
+          8
+        ],
+        [
+          0,
+          6,
+          13,
+          15
+        ],
         [
           50,
           11,
           0,
           49
+        ]
+      ],
+      "complexity_class": "Level 1: Branchless Mux"
+    },
+    "set_lowest_zero_bit": {
+      "name": "set_lowest_zero_bit",
+      "description": "Set the lowest 0-bit of x using x | (x + 1)",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 2,
+      "reward": 0.9800000190734863,
+      "initial_energy": 15.904875755310059,
+      "final_energy": 5.805414199829102,
+      "lisp_module": "(module set_lowest_zero_bit\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (add x 1)))\n      (let ((result (bit-or x t0)))\n        result)))\n  (specification\n    (assert (= result (bit-or x (add x 1))))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvadd x (_ bv1 64)))\n(define-fun step_1_r11 () (_ BitVec 64) (bvor x step_0_r4))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvor x (bvadd x (_ bv1 64))))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          16,
+          4,
+          0,
+          13
         ],
         [
           0,
-          0,
-          0,
+          5,
+          4,
           0
         ],
         [
           0,
-          0,
-          0,
+          4,
+          15,
           0
         ],
         [
           0,
+          11,
+          15,
+          6
+        ],
+        [
           0,
+          7,
+          7,
+          13
+        ],
+        [
+          0,
+          4,
+          14,
+          4
+        ],
+        [
+          0,
+          5,
+          0,
+          15
+        ],
+        [
+          2,
+          11,
+          0,
+          4
+        ]
+      ],
+      "complexity_class": "Level 2: Compound Bit Manipulation"
+    },
+    "mask_trailing_zeros": {
+      "name": "mask_trailing_zeros",
+      "description": "Create a bitmask of all trailing zeros of x using (~x) & (x - 1)",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 3,
+      "reward": 0.9700000286102295,
+      "initial_energy": 14.534323692321777,
+      "final_energy": 6.485161304473877,
+      "lisp_module": "(module mask_trailing_zeros\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (bit-not x)))\n      (let ((t1 (sub x 1)))\n        (let ((result (bit-and t0 t1)))\n          result))))\n  (specification\n    (assert (= result (bit-and (bit-not x) (sub x 1))))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvnot x))\n(define-fun step_1_r5 () (_ BitVec 64) (bvsub x (_ bv1 64)))\n(define-fun step_2_r11 () (_ BitVec 64) (bvand step_0_r4 step_1_r5))\n(define-fun circuit_out () (_ BitVec 64) step_2_r11)\n(define-fun spec_out () (_ BitVec 64) (bvand (bvnot x) (bvsub x (_ bv1 64))))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          4,
+          4,
           0,
           0
+        ],
+        [
+          17,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          6,
+          5,
+          13
+        ],
+        [
+          0,
+          6,
+          14,
+          13
+        ],
+        [
+          0,
+          6,
+          6,
+          14
+        ],
+        [
+          0,
+          5,
+          14,
+          12
+        ],
+        [
+          0,
+          8,
+          13,
+          9
+        ],
+        [
+          1,
+          11,
+          4,
+          5
+        ]
+      ],
+      "complexity_class": "Level 2: 3-Gate Bitwise/ALU"
+    },
+    "branchless_min_u64": {
+      "name": "branchless_min_u64",
+      "description": "Branchless 64-bit unsigned minimum min(x, y) via CMP_ULT and SELECT",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 2,
+      "reward": 0.9800000190734863,
+      "initial_energy": 16.50623321533203,
+      "final_energy": 5.908597946166992,
+      "lisp_module": "(module branchless_min_u64\n  (inputs (x :bits 64) (y :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (cmp-ult x y)))\n      (let ((result (select t0 x y)))\n        result)))\n  (specification\n    (assert (= result (select (cmp-ult x y) x y)))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (ite (bvult x y) (bvnot (_ bv0 64)) (_ bv0 64)))\n(define-fun step_1_r11 () (_ BitVec 64) (bvor (bvand step_0_r4 x) (bvand (bvnot step_0_r4) y)))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvor (bvand (ite (bvult x y) (bvnot (_ bv0 64)) (_ bv0 64)) x) (bvand (bvnot (ite (bvult x y) (bvnot (_ bv0 64)) (_ bv0 64))) y)))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          49,
+          4,
+          0,
+          1
+        ],
+        [
+          0,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          6,
+          5,
+          13
+        ],
+        [
+          0,
+          5,
+          4,
+          13
+        ],
+        [
+          0,
+          4,
+          7,
+          15
+        ],
+        [
+          0,
+          4,
+          4,
+          12
+        ],
+        [
+          0,
+          6,
+          13,
+          9
+        ],
+        [
+          50,
+          11,
+          0,
+          81
+        ]
+      ],
+      "complexity_class": "Level 2: Branchless Comparator"
+    },
+    "linear_congruential_step": {
+      "name": "linear_congruential_step",
+      "description": "Compute affine modular step (2*x + y + 1) = (x << 1) + y + 1",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 3,
+      "reward": 0.9700000286102295,
+      "initial_energy": 24.307435989379883,
+      "final_energy": 10.951542854309082,
+      "lisp_module": "(module linear_congruential_step\n  (inputs (x :bits 64) (y :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (bit-shl x 1)))\n      (let ((t1 (add t0 y)))\n        (let ((result (add t1 1)))\n          result))))\n  (specification\n    (assert (= result (add (add (bit-shl x 1) y) 1)))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvshl x (bvand (_ bv1 64) (_ bv63 64))))\n(define-fun step_1_r5 () (_ BitVec 64) (bvadd step_0_r4 y))\n(define-fun step_2_r11 () (_ BitVec 64) (bvadd step_1_r5 (_ bv1 64)))\n(define-fun circuit_out () (_ BitVec 64) step_2_r11)\n(define-fun spec_out () (_ BitVec 64) (bvadd (bvadd (bvshl x (bvand (_ bv1 64) (_ bv63 64))) y) (_ bv1 64)))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          6,
+          4,
+          0,
+          13
+        ],
+        [
+          16,
+          5,
+          4,
+          1
+        ],
+        [
+          0,
+          6,
+          5,
+          13
+        ],
+        [
+          0,
+          5,
+          15,
+          15
+        ],
+        [
+          0,
+          8,
+          6,
+          0
+        ],
+        [
+          0,
+          8,
+          8,
+          7
+        ],
+        [
+          0,
+          6,
+          4,
+          4
+        ],
+        [
+          16,
+          11,
+          5,
+          13
+        ]
+      ],
+      "complexity_class": "Level 2: 3-Gate ALU Pipeline"
+    },
+    "branchless_abs_diff_xor": {
+      "name": "branchless_abs_diff_xor",
+      "description": "Conditional sign-mask transform (x ^ y) - y",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 2,
+      "reward": 0.9800000190734863,
+      "initial_energy": 58.10237503051758,
+      "final_energy": 22.732145309448242,
+      "lisp_module": "(module branchless_abs_diff_xor\n  (inputs (x :bits 64) (y :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (bit-xor x y)))\n      (let ((result (sub t0 y)))\n        result)))\n  (specification\n    (assert (= result (sub (bit-xor x y) y)))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n(declare-const y (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvxor x y))\n(define-fun step_1_r11 () (_ BitVec 64) (bvsub step_0_r4 y))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvsub (bvxor x y) y))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          3,
+          4,
+          0,
+          1
+        ],
+        [
+          0,
+          5,
+          15,
+          13
+        ],
+        [
+          0,
+          11,
+          14,
+          1
+        ],
+        [
+          0,
+          4,
+          12,
+          12
+        ],
+        [
+          0,
+          6,
+          6,
+          15
+        ],
+        [
+          0,
+          8,
+          6,
+          8
+        ],
+        [
+          0,
+          5,
+          8,
+          15
+        ],
+        [
+          17,
+          11,
+          4,
+          1
+        ]
+      ],
+      "complexity_class": "Level 3: Branchless Arithmetic"
+    },
+    "isolate_lowest_zero_bit": {
+      "name": "isolate_lowest_zero_bit",
+      "description": "Isolate the lowest 0-bit of x as a 1-bit mask using (~x) & (x + 1)",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 3,
+      "reward": 0.9700000286102295,
+      "initial_energy": 15.6947021484375,
+      "final_energy": 5.542289733886719,
+      "lisp_module": "(module isolate_lowest_zero_bit\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (bit-not x)))\n      (let ((t1 (add x 1)))\n        (let ((result (bit-and t0 t1)))\n          result))))\n  (specification\n    (assert (= result (bit-and (bit-not x) (add x 1))))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvnot x))\n(define-fun step_1_r5 () (_ BitVec 64) (bvadd x (_ bv1 64)))\n(define-fun step_2_r11 () (_ BitVec 64) (bvand step_0_r4 step_1_r5))\n(define-fun circuit_out () (_ BitVec 64) step_2_r11)\n(define-fun spec_out () (_ BitVec 64) (bvand (bvnot x) (bvadd x (_ bv1 64))))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          4,
+          4,
+          0,
+          0
+        ],
+        [
+          16,
+          5,
+          0,
+          13
+        ],
+        [
+          0,
+          6,
+          5,
+          13
+        ],
+        [
+          0,
+          6,
+          12,
+          13
+        ],
+        [
+          0,
+          6,
+          13,
+          0
+        ],
+        [
+          0,
+          5,
+          7,
+          7
+        ],
+        [
+          0,
+          6,
+          4,
+          4
+        ],
+        [
+          1,
+          11,
+          4,
+          5
+        ]
+      ],
+      "complexity_class": "Level 3: 3-Gate Bit Isolation"
+    },
+    "swap_lsb_to_bit1": {
+      "name": "swap_lsb_to_bit1",
+      "description": "Extract LSB of x and shift to bit position 1 via (x & 1) << 1",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 2,
+      "reward": 0.9800000190734863,
+      "initial_energy": 10.000933647155762,
+      "final_energy": 4.019932746887207,
+      "lisp_module": "(module swap_lsb_to_bit1\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (bit-and x 1)))\n      (let ((result (bit-shl t0 1)))\n        result)))\n  (specification\n    (assert (= result (bit-shl (bit-and x 1) 1)))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvand x (_ bv1 64)))\n(define-fun step_1_r11 () (_ BitVec 64) (bvshl step_0_r4 (bvand (_ bv1 64) (_ bv63 64))))\n(define-fun circuit_out () (_ BitVec 64) step_1_r11)\n(define-fun spec_out () (_ BitVec 64) (bvshl (bvand x (_ bv1 64)) (bvand (_ bv1 64) (_ bv63 64))))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          1,
+          4,
+          0,
+          13
+        ],
+        [
+          0,
+          5,
+          0,
+          4
+        ],
+        [
+          0,
+          6,
+          5,
+          13
+        ],
+        [
+          0,
+          11,
+          6,
+          4
+        ],
+        [
+          0,
+          7,
+          7,
+          4
+        ],
+        [
+          0,
+          11,
+          0,
+          14
+        ],
+        [
+          0,
+          6,
+          6,
+          4
+        ],
+        [
+          6,
+          11,
+          4,
+          13
+        ]
+      ],
+      "complexity_class": "Level 3: Bitfield Extraction"
+    },
+    "clear_two_lowest_set_bits": {
+      "name": "clear_two_lowest_set_bits",
+      "description": "Clear the two lowest set 1-bits of x by composing Kernighan's trick twice",
+      "status": "UNSAT",
+      "backend": "symbolic-bv64",
+      "active_gates": 4,
+      "reward": 0.9599999785423279,
+      "initial_energy": 8.774837493896484,
+      "final_energy": 3.375561237335205,
+      "lisp_module": "(module clear_two_lowest_set_bits\n  (inputs (x :bits 64))\n  (outputs (result :bits 64))\n  (circuit\n    (let ((t0 (sub x 1)))\n      (let ((t1 (bit-and x t0)))\n        (let ((t2 (sub t1 1)))\n          (let ((result (bit-and t1 t2)))\n            result)))))\n  (specification\n    (assert (= result (bit-and (bit-and x (sub x 1)) (sub (bit-and x (sub x 1)) 1))))))",
+      "smt2_certificate": "(set-logic QF_BV)\n; Input Bit-Vector Declarations\n(declare-const x (_ BitVec 64))\n; Synthesized Circuit SSA Instructions\n(define-fun step_0_r4 () (_ BitVec 64) (bvsub x (_ bv1 64)))\n(define-fun step_1_r5 () (_ BitVec 64) (bvand x step_0_r4))\n(define-fun step_2_r6 () (_ BitVec 64) (bvsub step_1_r5 (_ bv1 64)))\n(define-fun step_3_r11 () (_ BitVec 64) (bvand step_1_r5 step_2_r6))\n(define-fun circuit_out () (_ BitVec 64) step_3_r11)\n(define-fun spec_out () (_ BitVec 64) (bvand (bvand x (bvsub x (_ bv1 64))) (bvsub (bvand x (bvsub x (_ bv1 64))) (_ bv1 64))))\n; Assert negation of universal equivalence: exists x s.t. circuit(x) != spec(x)\n(assert (not (= circuit_out spec_out)))\n(check-sat)",
+      "bytecode": [
+        [
+          17,
+          4,
+          0,
+          13
+        ],
+        [
+          1,
+          5,
+          0,
+          4
+        ],
+        [
+          17,
+          6,
+          5,
+          13
+        ],
+        [
+          1,
+          11,
+          5,
+          6
         ],
         [
           0,
@@ -504,7 +1008,7 @@
           0
         ]
       ],
-      "complexity_class": "O(1) Branchless Mux"
+      "complexity_class": "Level 3: 4-Gate Compound Composition"
     }
   }
 }

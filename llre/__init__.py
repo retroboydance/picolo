@@ -22,6 +22,7 @@ from llre.self_play import (
     SelfPlayEngine,
     VerifiedPrimitive,
     build_core_curriculum,
+    build_expanded_curriculum,
 )
 from llre.sigreg import compute_effective_dimensionality, sigreg_loss
 from llre.verifier import FormalVerifier, VerificationResult
@@ -51,6 +52,7 @@ __all__ = [
     "LogicChallenge",
     "VerifiedPrimitive",
     "build_core_curriculum",
+    "build_expanded_curriculum",
     "ObservabilityReport",
     "build_observability_report",
     "PeripheralIOAdapter",
