@@ -145,10 +145,26 @@ class TestLLREArchitecture(unittest.TestCase):
         self.assertLess(float(traj.energy_curve[-1]), float(traj.energy_curve[0]))
 
     def test_phase4_end_to_end_self_play_and_io_adapter(self) -> None:
+        import tempfile
+        from pathlib import Path
+        from llre.checkpoint import load_checkpoint, save_checkpoint
+
         engine = SelfPlayEngine(max_steps=8, latent_dim=32, explore_batch_size=256)
         challenges = build_core_curriculum()
-        sp = engine.run_self_play_curriculum(epochs=3, challenges=challenges)
+        sp = engine.run_self_play_curriculum(epochs=15, challenges=challenges)
         self.assertEqual(sp["formal_proof_rate"], 1.0)
+
+        # Verify pure-neural validation (no seed hints) reaches high 1-shot greedy UNSAT accuracy
+        val = engine.validate_neural_policy(challenges)
+        self.assertGreaterEqual(val["greedy_1shot_unsat_rate"], 0.75)
+
+        # Verify cross-OS checkpoint save & load round-trip
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ckpt_path = Path(tmpdir) / "test_ckpt.npz"
+            save_checkpoint(engine.params, ckpt_path, metadata={"epoch": 15})
+            loaded_params, meta = load_checkpoint(ckpt_path)
+            self.assertEqual(meta["epoch"], 15)
+            self.assertIn("decoder", loaded_params)
 
         report = build_observability_report(
             challenges=challenges,

@@ -9,6 +9,7 @@ A Token-Free, Grounded Paradigm for Native Silicon & Logic Intelligence:
 - Tier 5: Formal Equivalence Solver (`llre.verifier`)
 """
 
+from llre.checkpoint import load_checkpoint, save_checkpoint
 from llre.config import LLREConfig, get_config
 from llre.io_adapter import PeripheralIOAdapter
 from llre.isa import NUM_OPCODES, NUM_REGS, OUT_REG, Opcode
@@ -30,6 +31,8 @@ __version__ = "0.1.0"
 __all__ = [
     "LLREConfig",
     "get_config",
+    "save_checkpoint",
+    "load_checkpoint",
     "Opcode",
     "NUM_OPCODES",
     "NUM_REGS",

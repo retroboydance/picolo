@@ -433,15 +433,14 @@ class FormalVerifier:
 
         # Extract the first counterexample where circuit(x) != spec(x)
         actual_out = np.asarray(sb_res.outputs[0], dtype=np.uint64)
-        mask_val = np.uint64(MASK64_INT if output_bits >= 64 else ((1 << output_bits) - 1))
-        mismatch_indices = np.nonzero((actual_out & mask_val) != (expected & mask_val))[0]
-        first_idx = int(mismatch_indices[0])
+        mismatch_indices = np.nonzero(actual_out != expected)[0]
+        first_idx = int(mismatch_indices[0]) if len(mismatch_indices) > 0 else 0
         cex = {
             p.name: int(test_matrix[first_idx, i])
             for i, p in enumerate(in_ports)
         }
-        cex["circuit_output"] = int(actual_out[first_idx] & mask_val)
-        cex["expected_output"] = int(expected[first_idx] & mask_val)
+        cex["circuit_output"] = int(actual_out[first_idx])
+        cex["expected_output"] = int(expected[first_idx])
 
         return VerificationResult(
             proved=False,

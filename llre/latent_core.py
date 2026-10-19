@@ -127,26 +127,26 @@ def compute_dialectical_energy(
     """
     Compute Dialectical Clamping Energies (Section 2.3):
         E_total(z; c) = E_thesis(z; c) + E_antithesis(z; c)
+    Both streams co-evolve to establish a well-conditioned attractor basin around
+    the JEPA equilibrium state `z_hat = predict_jepa_target(params, c)`.
     Returns `(e_total, e_thesis, e_antithesis)`.
     """
     z_hat = predict_jepa_target(params, condition_c)
     diff = z - z_hat
 
-    # Thesis energy: combines neural compatibility score + quadratic attractor basin around z_hat
+    # Thesis energy: condition-modulated quadratic + smooth residual energy around z_hat
     th = params["thesis_head"]
     th_in = jnp.concatenate([z, condition_c, z * condition_c], axis=-1)
     th_h = jax.nn.silu(jnp.matmul(th_in, th["w1"]) + th["b1"])
-    th_net = jax.nn.softplus(jnp.squeeze(jnp.matmul(th_h, th["w2"]) + th["b2"], axis=-1))
-    attractor_term = 0.5 * jnp.mean(diff ** 2, axis=-1)
-    e_thesis = th_net + attractor_term
+    th_scale = 0.5 + jax.nn.softplus(jnp.squeeze(jnp.matmul(th_h, th["w2"]) + th["b2"], axis=-1))
+    e_thesis = th_scale * jnp.mean(diff ** 2, axis=-1)
 
-    # Antithesis energy: adversarial critic evaluating residual disagreement (z - z_hat, c)
+    # Antithesis energy: adversarial critic penalizing off-equilibrium directional deviations
     ant = params["antithesis_head"]
     ant_in = jnp.concatenate([diff, condition_c], axis=-1)
     ant_h = jax.nn.silu(jnp.matmul(ant_in, ant["w1"]) + ant["b1"])
-    ant_net = jax.nn.softplus(jnp.squeeze(jnp.matmul(ant_h, ant["w2"]) + ant["b2"], axis=-1))
-    norm_penalty = 0.05 * jnp.mean((jnp.linalg.norm(z, axis=-1, keepdims=True) - jnp.sqrt(z.shape[-1])) ** 2, axis=-1)
-    e_antithesis = ant_net + norm_penalty
+    ant_scale = 0.5 + jax.nn.softplus(jnp.squeeze(jnp.matmul(ant_h, ant["w2"]) + ant["b2"], axis=-1))
+    e_antithesis = ant_scale * jnp.mean(jnp.sqrt(diff ** 2 + 1e-4) - 0.01, axis=-1)
 
     e_total = e_thesis + e_antithesis
     return e_total, e_thesis, e_antithesis
@@ -158,7 +158,7 @@ def optimize_latent_trajectory(
     condition_c: jnp.ndarray,
     rng_key: jax.Array,
     num_steps: int = 12,
-    step_lr: float = 0.12,
+    step_lr: float = 0.18,
 ) -> LatentTrajectoryResult:
     """
     Perform continuous latent reasoning as an energy-minimizing trajectory:
@@ -178,7 +178,6 @@ def optimize_latent_trajectory(
         z_curr: jnp.ndarray, _: None
     ) -> Tuple[jnp.ndarray, Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]]:
         (e_tot, (e_th, e_ant)), g = grad_fn(z_curr)
-        # Normalized gradient step for smooth, stable descent
         g_norm = jnp.linalg.norm(g) + 1e-6
         clipped_g = jnp.where(g_norm > 2.0, g * (2.0 / g_norm), g)
         z_next = z_curr - step_lr * clipped_g
@@ -287,7 +286,6 @@ def sample_programs_from_latent(
     conds = sample_cat(cond_l, k_cond).astype(jnp.uint16)
 
     hex_ops = DENSE_TO_HEX_LUT[dense_ops]
-    # Pack ternary condition register into upper nibble when opcode is SELECT (dense_op == 15)
     packed_s2 = jnp.where(
         dense_ops == 15,
         (((conds & jnp.uint16(0x0F)) + jnp.uint16(1)) << jnp.uint16(4)) | (s2s_base & jnp.uint16(0x0F)),
@@ -308,9 +306,11 @@ def extract_spec_features(
     """
     Encode an input-output relation into a fixed-width continuous feature vector `[F]`
     without using natural language tokens:
-    - First 32 dims: normalized LSB parity/bit pattern across the first 32 canonical test cases
-    - Next 32 dims: normalized log-magnitude / high-bit correlation signature
-    - Final 4 dims: structural metadata (num_inputs, output_bits, monotonicity, bitwise flag)
+    - Dims 0..15  : Bit 0 (LSB) across first 16 canonical test cases in [-1, 1]
+    - Dims 16..31 : Bit 1 (carry/shift detector) across first 16 test cases in [-1, 1]
+    - Dims 32..47 : Bit 7 (byte boundary) across first 16 test cases in [-1, 1]
+    - Dims 48..63 : Bit 63 (MSB / sign / inversion detector) across first 16 test cases in [-1, 1]
+    - Dims 64..67 : Structural invariants (num_inputs, output_bits, popcount density, XOR correlation)
     """
     t_in = np.asarray(test_inputs, dtype=np.uint64)
     if t_in.ndim == 1:
@@ -318,17 +318,27 @@ def extract_spec_features(
     t_out = np.asarray(test_targets, dtype=np.uint64).reshape(-1)
 
     feats = np.zeros((feature_dim,), dtype=np.float32)
-    n = min(len(t_out), 32)
-    # Bit 0 signature in [-1, 1]
-    feats[:n] = ((t_out[:n] & np.uint64(1)).astype(np.float32) * 2.0) - 1.0
-    # Bit 1..7 / magnitude signature
-    feats[32 : 32 + n] = np.tanh(np.log1p(t_out[:n].astype(np.float64)) / 10.0).astype(np.float32)
+    n = min(len(t_out), 16)
+
+    for b_idx, bit_pos in enumerate((0, 1, 7, 63)):
+        bits = ((t_out[:n] >> np.uint64(bit_pos)) & np.uint64(1)).astype(np.float32)
+        feats[b_idx * 16 : b_idx * 16 + n] = (bits * 2.0) - 1.0
 
     feats[64] = float(num_inputs) / 4.0
     feats[65] = float(output_bits) / 64.0
-    feats[66] = float(np.mean((t_out[:n] ^ t_in[:n, 0]) == 0))
-    feats[67] = float(np.std(feats[:n]))
+    feats[66] = float(np.mean((t_out[:n] & np.uint64(0xFF)).astype(np.float32)) / 255.0)
+    feats[67] = float(np.mean((t_out[:n] ^ t_in[:n, 0]) == 0))
     return jnp.asarray(feats, dtype=jnp.float32)
+
+
+def init_optimizer_state(params: PyTree) -> Dict[str, Any]:
+    """Initialize pure-JAX AdamW optimizer state (`step`, `m`, `v`)."""
+    zeros = jax.tree_util.tree_map(jnp.zeros_like, params)
+    return {
+        "step": jnp.int32(0),
+        "m": zeros,
+        "v": zeros,
+    }
 
 
 @partial(jax.jit, static_argnames=("max_steps", "sigreg_projections"))
@@ -339,17 +349,21 @@ def train_latent_core_step(
     defect_rates_batch: jnp.ndarray,   # [N] float32 in [0, 1]
     grammar_masks: Dict[str, jnp.ndarray],
     rng_key: jax.Array,
-    lr: float = 0.015,
+    lr: float = 0.008,
     sigreg_weight: float = 0.1,
     max_steps: int = 8,
     sigreg_projections: int = 64,
-) -> Tuple[PyTree, Dict[str, jnp.ndarray]]:
+    opt_state: Optional[Dict[str, Any]] = None,
+) -> Tuple[PyTree, Dict[str, jnp.ndarray], Dict[str, Any]]:
     """
     Execute one self-supervised training step updating the Tier 2 Latent Core
-    and Tier 3 Projection Head using:
+    and Tier 3 Projection Head using AdamW and SIGReg:
         L_total = L_task (Decoder CE + Dialectical Energy Clamping) + lambda * R_SIGReg(Z)
     """
     from llre.isa import HEX_TO_DENSE_LUT
+
+    if opt_state is None:
+        opt_state = init_optimizer_state(params)
 
     k_sig, k_neg = jax.random.split(rng_key)
 
@@ -362,11 +376,10 @@ def train_latent_core_step(
         r_sigreg = sigreg_loss(z_hat, k_sig, num_projections=sigreg_projections)
 
         # 3. Dialectical Clamping Energy Loss (Thesis + Antithesis equilibrium)
-        e_pos, e_th_pos, e_ant_pos = compute_dialectical_energy(p, z_hat, c_batch)
+        e_pos, e_th_pos, _ = compute_dialectical_energy(p, z_hat, c_batch)
         z_corrupt = z_hat + jax.random.normal(k_neg, z_hat.shape, dtype=jnp.float32) * 1.25
-        e_neg, _, e_ant_neg = compute_dialectical_energy(p, z_corrupt, c_batch)
+        e_neg, _, _ = compute_dialectical_energy(p, z_corrupt, c_batch)
 
-        # Clamp equilibrium energy to empirical defect density, and force higher energy on off-manifold states
         energy_loss = jnp.mean((e_th_pos - defect_rates_batch) ** 2) + jnp.mean(
             jax.nn.softplus(1.0 + e_pos - e_neg)
         )
@@ -382,17 +395,26 @@ def train_latent_core_step(
         target_s2 = s2_raw & 0x0F
         target_cond = jnp.maximum(((s2_raw >> 4) & 0x0F) - 1, 0)
 
-        def ce(logits: jnp.ndarray, targets: jnp.ndarray) -> jnp.ndarray:
+        # Only penalize operand register choices on non-NOP instructions (target_ops != 0)
+        active_mask = (target_ops != 0).astype(jnp.float32)
+        active_denom = jnp.maximum(jnp.sum(active_mask), 1.0)
+
+        def ce_all(logits: jnp.ndarray, targets: jnp.ndarray) -> jnp.ndarray:
             log_probs = jax.nn.log_softmax(logits, axis=-1)
-            gathered = jnp.take_along_axis(log_probs, targets[..., None], axis=-1)
+            gathered = jnp.squeeze(jnp.take_along_axis(log_probs, targets[..., None], axis=-1), axis=-1)
             return -jnp.mean(gathered)
 
+        def ce_active(logits: jnp.ndarray, targets: jnp.ndarray) -> jnp.ndarray:
+            log_probs = jax.nn.log_softmax(logits, axis=-1)
+            gathered = jnp.squeeze(jnp.take_along_axis(log_probs, targets[..., None], axis=-1), axis=-1)
+            return -jnp.sum(gathered * active_mask) / active_denom
+
         decoder_loss = (
-            ce(op_l, target_ops)
-            + ce(dest_l, target_dest)
-            + ce(s1_l, target_s1)
-            + ce(s2_l, target_s2)
-            + 0.5 * ce(cond_l, target_cond)
+            ce_all(op_l, target_ops)
+            + ce_active(dest_l, target_dest)
+            + ce_active(s1_l, target_s1)
+            + ce_active(s2_l, target_s2)
+            + 0.5 * ce_active(cond_l, target_cond)
         )
 
         total_loss = decoder_loss + 0.5 * energy_loss + sigreg_weight * r_sigreg
@@ -401,19 +423,29 @@ def train_latent_core_step(
         metrics = {
             "total_loss": total_loss,
             "task_loss": decoder_loss + 0.5 * energy_loss,
+            "decoder_ce": decoder_loss,
             "sigreg_loss": r_sigreg,
             "effective_dim": eff_dim,
             "equilibrium_energy": jnp.mean(e_pos),
         }
         return total_loss, metrics
 
-    (loss_val, metrics), grads = jax.value_and_grad(loss_fn, has_aux=True)(params)
+    (_, metrics), grads = jax.value_and_grad(loss_fn, has_aux=True)(params)
 
-    # Pure-JAX normalized gradient update with weight decay
+    # Pure-JAX AdamW update
+    step = opt_state["step"] + jnp.int32(1)
+    b1, b2, eps, wd = 0.9, 0.999, 1e-8, 1e-4
+    new_m = jax.tree_util.tree_map(lambda m, g: b1 * m + (1.0 - b1) * g, opt_state["m"], grads)
+    new_v = jax.tree_util.tree_map(lambda v, g: b2 * v + (1.0 - b2) * (g ** 2), opt_state["v"], grads)
+    m_hat_scale = 1.0 / (1.0 - (b1 ** step.astype(jnp.float32)))
+    v_hat_scale = 1.0 / (1.0 - (b2 ** step.astype(jnp.float32)))
+
     new_params = jax.tree_util.tree_map(
-        lambda w, g: w - lr * (jnp.clip(g, -2.0, 2.0) + 1e-4 * w),
+        lambda w, m, v: w - lr * ((m * m_hat_scale) / (jnp.sqrt(v * v_hat_scale) + eps) + wd * w),
         params,
-        grads,
+        new_m,
+        new_v,
     )
-    return new_params, metrics
+    new_opt_state = {"step": step, "m": new_m, "v": new_v}
+    return new_params, metrics, new_opt_state
 

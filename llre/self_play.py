@@ -266,6 +266,9 @@ class SelfPlayEngine:
             hidden_dim=128,
             max_steps=self.max_steps,
         )
+        from llre.latent_core import init_optimizer_state
+
+        self.opt_state = init_optimizer_state(self.params)
         self.sandbox = LogicSandbox()
         self.compiler = LispCompiler(max_steps=self.max_steps)
         self.verifier = FormalVerifier(max_steps=self.max_steps)
@@ -328,11 +331,12 @@ class SelfPlayEngine:
         challenge: LogicChallenge,
         z_star: jnp.ndarray,
         temperature: float = 0.85,
+        allow_hints: bool = True,
     ) -> jnp.ndarray:
         """
-        Combine neural latent-decoded candidate circuits around `z*` with structured
-        1-step and 2-step ISA synthesis sweeps so Explorer Bob can discover novel
-        primitives even from cold start, then amortize them into the neural decoder.
+        Sample candidate `[B, L, 4]` circuits around `z*`.
+        When `allow_hints=False` (Validation Mode), returns 100% pure neural samples
+        from the Grammar-Constrained Decoder (where index 0 is the deterministic greedy decode).
         """
         self.rng_key, sample_key = jax.random.split(self.rng_key)
         masks = LispCompiler.build_grammar_masks(
@@ -349,6 +353,9 @@ class SelfPlayEngine:
             max_steps=self.max_steps,
             temperature=temperature,
         )
+        if not allow_hints:
+            return neural_progs
+
         progs_np = np.array(neural_progs, dtype=np.uint16, copy=True)
 
         # Inject systematic 1-gate & 2-gate compositions into the tail of the exploration batch
@@ -369,7 +376,6 @@ class SelfPlayEngine:
             Opcode.NEG,
             Opcode.SELECT,
         ]
-        # 1-instruction primitives
         for op in key_ops:
             for s1 in src_Choices[:4]:
                 for s2 in src_Choices[:4]:
@@ -393,6 +399,7 @@ class SelfPlayEngine:
         self,
         challenge: LogicChallenge,
         max_cegis_rounds: int = 3,
+        allow_hints: bool = True,
     ) -> Tuple[VerifiedPrimitive, LatentTrajectoryResult]:
         """
         Execute the full Tier 2 -> Tier 3 -> Tier 4 -> Tier 5 reasoning & verification loop
@@ -423,7 +430,9 @@ class SelfPlayEngine:
         verif_res: Optional[VerificationResult] = None
 
         for _round in range(max_cegis_rounds):
-            candidates = self._propose_candidate_batch(challenge, traj_res.z_star)
+            candidates = self._propose_candidate_batch(
+                challenge, traj_res.z_star, allow_hints=allow_hints
+            )
             sb_res = self.sandbox.evaluate_alu64(
                 candidates,
                 test_in,
@@ -498,20 +507,113 @@ class SelfPlayEngine:
             self.library.register(prim)
         return prim, traj_res
 
+    def validate_neural_policy(
+        self,
+        challenges: Optional[List[LogicChallenge]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Strict pure-neural validation (NO seed circuits or heuristic sweeps injected):
+        1. `greedy_1shot_unsat_rate`: % of challenges formally proven `UNSAT` using ONLY
+           `candidates[0]` (the single deterministic argmax decode at equilibrium `z*`).
+        2. `neural_cloud_unsat_rate`: % of challenges formally proven `UNSAT` from the
+           pure neural latent cloud sampled around `z*`.
+        3. `mean_greedy_bit_errors`: Average bitwise Hamming error of the 1-shot greedy decode.
+        """
+        tasks = challenges or build_core_curriculum()
+        greedy_proved = 0
+        cloud_proved = 0
+        greedy_bit_errors: List[int] = []
+        energy_drops: List[float] = []
+        per_task_val: Dict[str, Dict[str, Any]] = {}
+
+        for ch in tasks:
+            test_in, test_out = self._generate_sandbox_tests(ch, num_tests=64)
+            output_bits = ch.outputs[0].bits
+            spec_feats = extract_spec_features(
+                test_in, test_out, num_inputs=len(ch.inputs), output_bits=output_bits
+            )
+            condition_c = encode_condition(self.params, spec_feats)
+            self.rng_key, traj_key = jax.random.split(self.rng_key)
+            traj_res = optimize_latent_trajectory(
+                self.params,
+                condition_c,
+                traj_key,
+                num_steps=self.config.trajectory_steps,
+                step_lr=self.config.trajectory_lr,
+            )
+            energy_drops.append(float(traj_res.energy_curve[0] - traj_res.energy_curve[-1]))
+
+            # Pure neural decoding (allow_hints=False)
+            neural_cands = self._propose_candidate_batch(
+                ch, traj_res.z_star, temperature=0.75, allow_hints=False
+            )
+            sb_res = self.sandbox.evaluate_alu64(
+                neural_cands, test_in, test_out, output_bits=output_bits
+            )
+            bit_errs = np.asarray(sb_res.bit_errors)
+            rewards = np.asarray(sb_res.rewards)
+
+            # 1. Check single deterministic greedy decode (index 0)
+            greedy_err = int(bit_errs[0])
+            greedy_bit_errors.append(greedy_err)
+            greedy_prog = np.asarray(neural_cands[0], dtype=np.uint16)
+            v_greedy = self.verifier.verify_program(
+                greedy_prog,
+                inputs=ch.inputs,
+                outputs=ch.outputs,
+                spec_expr=ch.spec_expr,
+                module_name=ch.name,
+            )
+            if v_greedy.proved:
+                greedy_proved += 1
+
+            # 2. Check best candidate in pure neural latent cloud
+            zero_idxs = np.nonzero(bit_errs == 0)[0]
+            best_idx = int(zero_idxs[np.argmax(rewards[zero_idxs])]) if len(zero_idxs) > 0 else int(np.argmax(rewards))
+            best_prog = np.asarray(neural_cands[best_idx], dtype=np.uint16)
+            v_cloud = (
+                v_greedy
+                if best_idx == 0
+                else self.verifier.verify_program(
+                    best_prog,
+                    inputs=ch.inputs,
+                    outputs=ch.outputs,
+                    spec_expr=ch.spec_expr,
+                    module_name=ch.name,
+                )
+            )
+            if v_cloud.proved:
+                cloud_proved += 1
+
+            per_task_val[ch.name] = {
+                "greedy_1shot_unsat": v_greedy.proved,
+                "greedy_bit_errors": greedy_err,
+                "neural_cloud_unsat": v_cloud.proved,
+                "active_gates": v_cloud.active_gates,
+            }
+
+        n = float(max(len(tasks), 1))
+        return {
+            "greedy_1shot_unsat_rate": greedy_proved / n,
+            "neural_cloud_unsat_rate": cloud_proved / n,
+            "mean_greedy_bit_errors": float(np.mean(greedy_bit_errors)),
+            "mean_energy_drop": float(np.mean(energy_drops)),
+            "per_task": per_task_val,
+        }
+
     def run_self_play_curriculum(
         self,
-        epochs: int = 8,
+        epochs: int = 12,
         challenges: Optional[List[LogicChallenge]] = None,
     ) -> Dict[str, Any]:
         """
         Train the Tier 2 Latent Reasoning Core & Tier 3 Decoder via Asymmetric Self-Play
-        across the challenge curriculum with SIGReg regularization.
+        across the challenge curriculum with AdamW and SIGReg regularization.
         """
         tasks = challenges or build_core_curriculum()
         solved_primitives: Dict[str, VerifiedPrimitive] = {}
         trajectories: Dict[str, LatentTrajectoryResult] = {}
 
-        # Step 1: Discover and formally verify elite circuits across the curriculum
         spec_feats_list: List[jnp.ndarray] = []
         elite_progs_list: List[np.ndarray] = []
         defect_rates_list: List[float] = []
@@ -521,47 +623,68 @@ class SelfPlayEngine:
             s_feat = extract_spec_features(
                 test_in, test_out, num_inputs=len(ch.inputs), output_bits=ch.outputs[0].bits
             )
-            prim, traj = self.solve_challenge(ch)
+            prim, traj = self.solve_challenge(ch, allow_hints=True)
             solved_primitives[ch.name] = prim
             trajectories[ch.name] = traj
 
+            # Canonicalize target bytecode into compact front-padded SSA form so the
+            # neural decoder learns to place active gates in steps 0..k-1
+            active_tuples = self.compiler.extract_active_instructions(
+                np.asarray(prim.bytecode, dtype=np.uint16), eliminate_dead_code=True
+            )
+            compact_instrs: List[List[int]] = []
+            for idx, (_, spec, dest, s1, s2, cond_r) in enumerate(active_tuples):
+                is_last = idx == len(active_tuples) - 1
+                target_dest = OUT_REG if is_last else min(4 + idx, 10)
+                if spec.opcode == Opcode.SELECT:
+                    es1, es2 = encode_select_operands(cond_r, s1, s2)
+                    compact_instrs.append(make_instruction(spec.opcode, target_dest, es1, es2))
+                else:
+                    compact_instrs.append(make_instruction(spec.opcode, target_dest, s1, s2))
+
+            canonical_prog = pad_program(compact_instrs, self.max_steps)
+            # Ensure final step (L-1) also writes OUT_REG if grammar mask locks step L-1 to OUT_REG
+            if len(compact_instrs) > 0 and len(compact_instrs) < self.max_steps:
+                last_op = compact_instrs[-1]
+                canonical_prog = pad_program(compact_instrs[:-1], self.max_steps)
+                canonical_prog[self.max_steps - 1] = np.asarray(
+                    [last_op[0], OUT_REG, last_op[2], last_op[3]], dtype=np.uint16
+                )
+
             spec_feats_list.append(s_feat)
-            elite_progs_list.append(np.asarray(prim.bytecode, dtype=np.uint16))
+            elite_progs_list.append(canonical_prog)
             defect_rates_list.append(0.0 if prim.status == "UNSAT" else 1.0)
 
         spec_batch = jnp.stack(spec_feats_list, axis=0)
         elite_batch = jnp.asarray(np.stack(elite_progs_list, axis=0), dtype=jnp.uint16)
         defect_batch = jnp.asarray(defect_rates_list, dtype=jnp.float32)
 
-        # Augment batch with noisy feature views for robust SIGReg manifold training (N >= 32)
-        self.rng_key, aug_key = jax.random.split(self.rng_key)
+        # Replicate across batch for SIGReg manifold conditioning while keeping exact features included
         repeats = max(1, 32 // len(tasks))
         spec_aug = jnp.repeat(spec_batch, repeats, axis=0)
-        noise = jax.random.normal(aug_key, spec_aug.shape, dtype=jnp.float32) * 0.05
-        spec_aug = spec_aug + noise
         elite_aug = jnp.repeat(elite_batch, repeats, axis=0)
         defect_aug = jnp.repeat(defect_batch, repeats, axis=0)
 
         training_history: List[Dict[str, float]] = []
-        for ep in range(epochs):
+        for _ep in range(epochs):
             self.rng_key, step_key = jax.random.split(self.rng_key)
-            self.params, step_metrics = train_latent_core_step(
+            self.params, step_metrics, self.opt_state = train_latent_core_step(
                 self.params,
                 spec_aug,
                 elite_aug,
                 defect_aug,
                 self.grammar_masks,
                 step_key,
-                lr=0.02,
+                lr=0.012,
                 sigreg_weight=self.config.sigreg_weight,
                 max_steps=self.max_steps,
                 sigreg_projections=self.config.sigreg_projections,
+                opt_state=self.opt_state,
             )
             training_history.append({k: float(v) for k, v in step_metrics.items()})
 
-        # Re-evaluate latent trajectories after self-play training to record post-training energy descent
         for ch in tasks:
-            prim, traj = self.solve_challenge(ch)
+            prim, traj = self.solve_challenge(ch, allow_hints=True)
             solved_primitives[ch.name] = prim
             trajectories[ch.name] = traj
 
@@ -572,3 +695,4 @@ class SelfPlayEngine:
             "trajectories": trajectories,
             "training_history": training_history,
         }
+
